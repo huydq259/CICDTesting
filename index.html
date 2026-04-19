@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Static Landing | Nginx Docker</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="bg-shape bg-shape-1"></div>
+    <div class="bg-shape bg-shape-2"></div>
+
+    <main class="container">
+      <section class="hero reveal">
+        <p class="tag">STATIC WEB + NGINX + DOCKER</p>
+        <h1>Deploy-ready static page</h1>
+        <p class="subtitle">
+          A single-page static site powered by plain HTML, CSS, and JavaScript,
+          packaged to run with Nginx in Docker.
+        </p>
+        <div class="actions">
+          <button id="themeToggle" class="btn btn-primary">Change Accent</button>
+          <button id="timeBtn" class="btn btn-outline">Show Build Time</button>
+        </div>
+        <p id="timeOutput" class="mono muted"></p>
+      </section>
+
+      <section class="features">
+        <article class="card reveal" style="--delay: 120ms">
+          <h2>Clean stack</h2>
+          <p>Vanilla HTML, CSS, and JS. No framework required.</p>
+        </article>
+        <article class="card reveal" style="--delay: 220ms">
+          <h2>Containerized</h2>
+          <p>Runs on the official Nginx image with a simple Dockerfile.</p>
+        </article>
+        <article class="card reveal" style="--delay: 320ms">
+          <h2>Production-friendly</h2>
+          <p>Minimal setup, fast startup, and easy to deploy anywhere.</p>
+        </article>
+      </section>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>

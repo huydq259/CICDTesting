@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: static-web-app
+    ports:
+      - "80:80"
+    volumes:
+      - ./web:/usr/share/nginx/html
+      - ./web:/usr/share/nginx/css
+      - ./web:/usr/share/nginx/js
+    restart: unless-stopped
