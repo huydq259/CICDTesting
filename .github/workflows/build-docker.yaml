@@ -15,5 +15,5 @@ jobs:
 
             - name: Push the Docker image
               run: |
-                docker login -u hq259-p ${{ secrets.DOCKER_HUB_TOKEN}}
+                docker login -u hq259 -p ${{ secrets.DOCKER_HUB_TOKEN}}
                 docker push hq259/demo-1:latest
