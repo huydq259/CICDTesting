@@ -4,105 +4,22 @@ on:
   workflow_dispatch:
 
 jobs:
-  # =========================
-  # 1. LINT (OPTIONAL)
-  # =========================
-  lint:
+  build-and-push:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Check HTML files (basic)
-        run: |
-          echo "Checking HTML files..."
-          find . -name "*.html"
-
-  # =========================
-  # 2. BUILD & PUSH DOCKER
-  # =========================
-  build:
-    needs: lint
-    runs-on: ubuntu-latest
-
-    outputs:
-      image_tag: ${{ steps.meta.outputs.tag }}
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set image tag
-        id: meta
-        run: echo "tag=${GITHUB_SHA}" >> $GITHUB_OUTPUT
-
-      - name: Login Docker Hub
+      - name: Login DockerHub
         uses: docker/login-action@v3
         with:
           username: hq259
-          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build Docker image
         run: |
-          docker build -t hq259/demo-1:${{ steps.meta.outputs.tag }} .
+          docker build -t hq259/demo-1:latest ./demo-app
 
       - name: Push Docker image
         run: |
-          docker push hq259/demo-1:${{ steps.meta.outputs.tag }}
-
-  # =========================
-  # 3. DEPLOY SERVER
-  # =========================
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
-        env:
-          IMAGE: hq259/demo-1:${{ needs.build.outputs.image_tag }}
-          APP_NAME: demo-web
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          envs: IMAGE,APP_NAME
-          script: |
-            echo "Deploying $IMAGE"
-
-            # Pull image mới
-            docker pull $IMAGE
-
-            # Stop container cũ
-            docker stop $APP_NAME || true
-            docker rm $APP_NAME || true
-
-            # Run container mới (nginx serve static)
-            docker run -d \
-              -p 80:80 \
-              --name $APP_NAME \
-              $IMAGE
-
-            # Cleanup
-            docker image prune -f
-
-  # =========================
-  # 4. ROLLBACK (OPTIONAL)
-  # =========================
-  rollback:
-    if: failure()
-    needs: deploy
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Rollback
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          script: |
-            echo "Rollback logic here (pull image cũ)"
-
+          docker push hq259/demo-1:latest
