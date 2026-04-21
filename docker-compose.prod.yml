@@ -1,0 +1,7 @@
+services:
+  web:
+    image: ${IMAGE:-hq259/demo-1:latest}
+    container_name: demo-1
+    ports:
+      - "80:80"
+    restart: unless-stopped
