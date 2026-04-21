@@ -1,21 +1,158 @@
-name: Docker Build And Publish image to Docker Hub
+name: Docker Build / Deploy / Rollback
 
 on:
   workflow_dispatch:
+    inputs:
+      action:
+        description: Choose what to run
+        required: true
+        type: choice
+        options:
+          - deploy-staging
+          - deploy-production
+          - rollback-staging
+          - rollback-production
+      image:
+        description: Docker image name (without tag)
+        required: true
+        default: hq259/demo-1
+      staging_server:
+        description: (Optional) Staging server IP/host (for display only)
+        required: false
+      production_server:
+        description: (Optional) Production server IP/host (for display only)
+        required: false
+      rollback_tag:
+        description: Tag to rollback to (required for rollback actions)
+        required: false
 
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    if: ${{ inputs.action == 'deploy-staging' || inputs.action == 'deploy-production' }}
+
+    outputs:
+      image: ${{ steps.meta.outputs.image }}
+      tag: ${{ steps.meta.outputs.tag }}
 
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build Docker image  
+      - name: Compute image tag
+        id: meta
         run: |
-          docker build . -t hq259/demo-1:latest 
+          echo "image=${{ inputs.image }}" >> $GITHUB_OUTPUT
+          echo "tag=${GITHUB_SHA}" >> $GITHUB_OUTPUT
 
-      - name: Push Docker image to docker hub
+      - name: Login Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: hq259
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
+      - name: Build
         run: |
-          docker login -u hq259 -p ${{ secrets.DOCKER_HUB_TOKEN }}
-          docker push hq259/demo-1:latest
+          docker build -t ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.tag }} .
+          docker tag ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.tag }} ${{ steps.meta.outputs.image }}:latest
+
+      - name: Push
+        run: |
+          docker push ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.tag }}
+          docker push ${{ steps.meta.outputs.image }}:latest
+
+  deploy-staging:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: ${{ inputs.action == 'deploy-staging' }}
+
+    steps:
+      - name: Deploy STAGING (manual commands)
+        env:
+          IMAGE: ${{ needs.build-and-push.outputs.image }}
+          TAG: ${{ needs.build-and-push.outputs.tag }}
+          SERVER: ${{ inputs.staging_server }}
+        run: |
+          echo "STAGING server: ${SERVER:-<your-staging-server>}"
+          echo "Run these commands ON STAGING server:"
+          echo ""
+          echo "docker pull $IMAGE:$TAG"
+          echo "docker stop demo-1-staging 2>/dev/null || true"
+          echo "docker rm demo-1-staging 2>/dev/null || true"
+          echo "docker run -d --name demo-1-staging -p 80:80 --restart unless-stopped $IMAGE:$TAG"
+          echo "docker image prune -f"
+
+  deploy-production:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: ${{ inputs.action == 'deploy-production' }}
+
+    steps:
+      - name: Deploy PRODUCTION (manual commands)
+        env:
+          IMAGE: ${{ needs.build-and-push.outputs.image }}
+          TAG: ${{ needs.build-and-push.outputs.tag }}
+          SERVER: ${{ inputs.production_server }}
+        run: |
+          echo "PRODUCTION server: ${SERVER:-<your-production-server>}"
+          echo "Run these commands ON PRODUCTION server:"
+          echo ""
+          echo "docker pull $IMAGE:$TAG"
+          echo "docker stop demo-1 2>/dev/null || true"
+          echo "docker rm demo-1 2>/dev/null || true"
+          echo "docker run -d --name demo-1 -p 80:80 --restart unless-stopped $IMAGE:$TAG"
+          echo "docker image prune -f"
+
+  rollback-staging:
+    runs-on: ubuntu-latest
+    if: ${{ inputs.action == 'rollback-staging' }}
+
+    steps:
+      - name: Validate rollback tag
+        run: |
+          if [ -z "${{ inputs.rollback_tag }}" ]; then
+            echo "rollback_tag is required for rollback actions" >&2
+            exit 1
+          fi
+
+      - name: Rollback STAGING (manual commands)
+        env:
+          IMAGE: ${{ inputs.image }}
+          TAG: ${{ inputs.rollback_tag }}
+          SERVER: ${{ inputs.staging_server }}
+        run: |
+          echo "STAGING server: ${SERVER:-<your-staging-server>}"
+          echo "Run these commands ON STAGING server:"
+          echo ""
+          echo "docker pull $IMAGE:$TAG"
+          echo "docker stop demo-1-staging 2>/dev/null || true"
+          echo "docker rm demo-1-staging 2>/dev/null || true"
+          echo "docker run -d --name demo-1-staging -p 80:80 --restart unless-stopped $IMAGE:$TAG"
+          echo "docker image prune -f"
+
+  rollback-production:
+    runs-on: ubuntu-latest
+    if: ${{ inputs.action == 'rollback-production' }}
+
+    steps:
+      - name: Validate rollback tag
+        run: |
+          if [ -z "${{ inputs.rollback_tag }}" ]; then
+            echo "rollback_tag is required for rollback actions" >&2
+            exit 1
+          fi
+
+      - name: Rollback PRODUCTION (manual commands)
+        env:
+          IMAGE: ${{ inputs.image }}
+          TAG: ${{ inputs.rollback_tag }}
+          SERVER: ${{ inputs.production_server }}
+        run: |
+          echo "PRODUCTION server: ${SERVER:-<your-production-server>}"
+          echo "Run these commands ON PRODUCTION server:"
+          echo ""
+          echo "docker pull $IMAGE:$TAG"
+          echo "docker stop demo-1 2>/dev/null || true"
+          echo "docker rm demo-1 2>/dev/null || true"
+          echo "docker run -d --name demo-1 -p 80:80 --restart unless-stopped $IMAGE:$TAG"
+          echo "docker image prune -f"
